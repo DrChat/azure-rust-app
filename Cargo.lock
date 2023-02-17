@@ -657,14 +657,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
-name = "hello"
-version = "0.0.0"
-dependencies = [
- "rocket",
- "rocket_dyn_templates",
-]
-
-[[package]]
 name = "hermit-abi"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1496,6 +1488,14 @@ dependencies = [
  "ubyte",
  "version_check",
  "yansi",
+]
+
+[[package]]
+name = "rocket-app"
+version = "0.0.0"
+dependencies = [
+ "rocket",
+ "rocket_dyn_templates",
 ]
 
 [[package]]

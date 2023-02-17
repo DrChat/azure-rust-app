@@ -3,13 +3,10 @@
 extern crate rocket;
 
 use rocket::{
-    form::{Form, FromForm, FromFormField},
+    form::{Form, FromForm},
     fs::FileServer,
 };
 use rocket_dyn_templates::{context, Template};
-
-#[cfg(test)]
-mod tests;
 
 #[derive(Debug, FromForm)]
 #[allow(dead_code)]

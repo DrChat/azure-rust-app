@@ -1,30 +1,40 @@
-FROM buildpack-deps:jessie-curl
-MAINTAINER Azure App Services Container Images <appsvc-images@microsoft.com>
+FROM rust:latest as builder
 
-COPY init_container.sh /bin/
-COPY sshd_config /etc/ssh/
-COPY Cargo.toml /app/
-COPY src /app/src
+COPY Cargo.lock /build/
+COPY Cargo.toml /build/
+COPY src /build/src
 
-RUN apt-get update \
-  && apt-get install build-essential openssl libssl-dev -y \
-  && apt-get install vim -y \
-  && echo "root:Docker!" | chpasswd \
-  && chmod 755 /bin/init_container.sh \
-  && apt install openssh-server --no-install-recommends -y
+# RUN apt-key update && apt-get update \
+#   && apt-get install build-essential openssl libssl-dev vim -y --force-yes \
+#   && echo "root:Docker!" | chpasswd \
+#   && chmod 755 /bin/init_container.sh
+#   # && apt install openssh-server --no-install-recommends -y
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+# RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+# ENV PATH ${PATH}:/root/.cargo/bin:/home/site/wwwroot
 
-ENV PATH ${PATH}:/root/.cargo/bin:/home/site/wwwroot
+RUN rustup install nightly
 
 # Build the default page
-WORKDIR /app
-RUN ls
-RUN cargo build --release \
-  && mv target/release/rocket-app /app \
-  && cargo clean
+WORKDIR /build
 
-WORKDIR /home/site/wwwroot
-EXPOSE 2222 8080
+RUN cargo +nightly build --release
+RUN mkdir -p /app && mv target/release/rocket-app /app/
+
+FROM debian:bullseye-slim
+
+COPY --from=builder /app /app
+COPY Rocket.toml /app/
+COPY static /app/static
+COPY templates /app/templates
+
+COPY init_container.sh /bin/
+# COPY sshd_config /etc/ssh/
+
+RUN chmod 755 /bin/init_container.sh
+
+#WORKDIR /home/site/wwwroot
+WORKDIR /app
+EXPOSE 8000
 
 ENTRYPOINT [ "/bin/init_container.sh" ]
