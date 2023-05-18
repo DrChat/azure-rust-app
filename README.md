@@ -8,6 +8,18 @@ cargo run
 
 ## Quick Deployment
 ```
+New-AzResourceGroup -Name "webapp" -Location "South Central US"
+New-AzResourceGroupDeployment -ResourceGroupName "webapp" -TemplateFile .\deployment.bicep -TemplateParameterObject @{ `
+  webAppName = "testapp"
+}
+
+Connect-AzContainerRegistry -Name <insert name of ACR resource here>
+docker build -t <ACR>.azurecr.io/testapp:latest .
+docker push <ACR>.azurecr.io/testapp:latest
+```
+
+## Manual Deployment
+```
 $RESOURCE_GROUP = "rustwebapp"
 $DCR = "rustwebappdcr"
 $APPSERVICE = "rustappservice"
