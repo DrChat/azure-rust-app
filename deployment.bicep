@@ -7,14 +7,8 @@ param repositoryUrl string = 'https://github.com/DrChat/azure-rust-app'
 param branch string = 'main'
 
 var acrName = toLower('${webAppName}${uniqueString(resourceGroup().id)}')
-var aspName = toLower('asp_${webAppName}')
-var aidName = toLower('${webAppName}-ident')
+var aspName = toLower('${webAppName}-asp')
 var webName = toLower('${webAppName}${uniqueString(resourceGroup().id)}')
-
-resource appIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: aidName
-  location: location
-}
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2020-06-01' = {
   name: aspName
@@ -43,10 +37,7 @@ resource appService 'Microsoft.Web/sites@2020-06-01' = {
   name: webName
   location: location
   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${appIdentity.id}': {}
-    }
+    type: 'SystemAssigned'
   }
   properties: {
     serverFarmId: appServicePlan.id
@@ -55,7 +46,6 @@ resource appService 'Microsoft.Web/sites@2020-06-01' = {
       // We must authenticate to ACR, as no credentials are set up by default
       // (the Az CLI will implicitly set them up in the background)
       acrUseManagedIdentityCreds: true
-      acrUserManagedIdentityID: appIdentity.properties.clientId
       appSettings: [
         {
           name: 'WEBSITES_PORT'
@@ -74,11 +64,11 @@ resource acrPullRoleDefinition 'Microsoft.Authorization/roleDefinitions@2018-01-
 }
 
 resource appServiceAcrPull 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(resourceGroup().id, acrResource.id, appIdentity.id, 'AssignAcrPullToAS')
+  name: guid(resourceGroup().id, acrResource.id, appService.id, 'AssignAcrPullToAS')
   scope: acrResource
   properties: {
-    description: 'Assign AcrPull role to AKS'
-    principalId: appIdentity.properties.principalId
+    description: 'Assign AcrPull role to AS'
+    principalId: appService.identity.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: acrPullRoleDefinition.id
   }

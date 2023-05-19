@@ -2,6 +2,11 @@
 #[macro_use]
 extern crate rocket;
 
+use std::sync::Arc;
+
+use azure_core::auth::TokenCredential;
+use azure_identity::ImdsManagedIdentityCredential;
+
 use rocket::{
     form::{Form, FromForm},
     fs::FileServer,
@@ -26,8 +31,21 @@ fn hello(form: Form<Submit<'_>>) -> Template {
 }
 
 #[get("/")]
-pub fn index() -> Template {
-    Template::render("index", context! {})
+async fn index() -> Template {
+    let creds = ImdsManagedIdentityCredential::default();
+    let resp = creds.get_token("https://management.azure.com").await;
+
+    let ident = match resp {
+        Ok(_t) => format!("authenticated"),
+        Err(e) => format!("unable to authenticate: {e:#}"),
+    };
+
+    Template::render(
+        "index",
+        context! {
+            ident: ident
+        },
+    )
 }
 
 #[launch]

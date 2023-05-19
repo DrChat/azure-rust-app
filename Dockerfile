@@ -1,9 +1,5 @@
 FROM rust:latest as builder
 
-COPY Cargo.lock /build/
-COPY Cargo.toml /build/
-COPY src /build/src
-
 # RUN apt-key update && apt-get update \
 #   && apt-get install build-essential openssl libssl-dev vim -y --force-yes \
 #   && echo "root:Docker!" | chpasswd \
@@ -14,6 +10,10 @@ COPY src /build/src
 # ENV PATH ${PATH}:/root/.cargo/bin:/home/site/wwwroot
 
 RUN rustup install nightly
+
+COPY Cargo.lock /build/
+COPY Cargo.toml /build/
+COPY src /build/src
 
 # Build the default page
 WORKDIR /build
