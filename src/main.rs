@@ -1,8 +1,6 @@
-#![feature(decl_macro)]
+#![feature(decl_macro, io_error_other)]
 #[macro_use]
 extern crate rocket;
-
-use std::sync::Arc;
 
 use azure_core::auth::TokenCredential;
 use azure_identity::ImdsManagedIdentityCredential;
@@ -12,6 +10,8 @@ use rocket::{
     fs::FileServer,
 };
 use rocket_dyn_templates::{context, Template};
+
+mod api;
 
 #[derive(Debug, FromForm)]
 #[allow(dead_code)]
@@ -53,5 +53,6 @@ fn rocket() -> _ {
     rocket::build()
         .mount("/static", FileServer::from("static"))
         .mount("/", routes![index, hello])
+        .mount("/api", api::routes())
         .attach(Template::fairing())
 }
