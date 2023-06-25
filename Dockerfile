@@ -19,12 +19,11 @@ COPY src /build/src
 WORKDIR /build
 
 RUN cargo +nightly build --release
-RUN mkdir -p /app && mv target/release/rocket-app /app/
+RUN mkdir -p /app && mv target/release/axum-app /app/
 
 FROM debian:bullseye-slim
 
 COPY --from=builder /app /app
-COPY Rocket.toml /app/
 COPY static /app/static
 COPY templates /app/templates
 

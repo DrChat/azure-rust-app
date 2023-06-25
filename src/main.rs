@@ -1,37 +1,39 @@
-#![feature(decl_macro)]
-#[macro_use]
-extern crate rocket;
+use std::{net::SocketAddr, str::FromStr};
 
-use std::sync::Arc;
+use axum::{
+    extract::FromRef,
+    response::IntoResponse,
+    routing::{get, post},
+    Form, Router, Server,
+};
+use axum_template::{engine::Engine, RenderHtml};
+use tera::Tera;
+use tower_http::services::ServeDir;
 
+use anyhow::Context;
 use azure_core::auth::TokenCredential;
 use azure_identity::ImdsManagedIdentityCredential;
+use serde::Deserialize;
 
-use rocket::{
-    form::{Form, FromForm},
-    fs::FileServer,
-};
-use rocket_dyn_templates::{context, Template};
+type AppEngine = Engine<Tera>;
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, Deserialize)]
 #[allow(dead_code)]
-struct Submit<'v> {
-    #[field(validate = len(1..))]
-    name: &'v str,
+struct Submit {
+    name: String,
 }
 
-#[post("/hello", data = "<form>")]
-fn hello(form: Form<Submit<'_>>) -> Template {
-    Template::render(
-        "hello",
-        context! {
-            name: form.name,
-        },
+async fn hello(engine: AppEngine, Form(form): Form<Submit>) -> impl IntoResponse {
+    RenderHtml(
+        "hello.html.tera",
+        engine,
+        serde_json::json!({
+            "name": form.name,
+        }),
     )
 }
 
-#[get("/")]
-async fn index() -> Template {
+async fn index(engine: AppEngine) -> impl IntoResponse {
     let creds = ImdsManagedIdentityCredential::default();
     let resp = creds.get_token("https://management.azure.com").await;
 
@@ -40,18 +42,34 @@ async fn index() -> Template {
         Err(e) => format!("unable to authenticate: {e:#}"),
     };
 
-    Template::render(
-        "index",
-        context! {
-            ident: ident
-        },
+    RenderHtml(
+        "index.html.tera",
+        engine,
+        serde_json::json!({
+            "ident": ident
+        }),
     )
 }
 
-#[launch]
-fn rocket() -> _ {
-    rocket::build()
-        .mount("/static", FileServer::from("static"))
-        .mount("/", routes![index, hello])
-        .attach(Template::fairing())
+#[derive(Clone, FromRef)]
+struct AppState {
+    engine: AppEngine,
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let tera = Tera::new("templates/**/*").context("failed to initialize tera")?;
+
+    let app = Router::new()
+        .route("/", get(index))
+        .route("/hello", post(hello))
+        .nest_service("/static", ServeDir::new("./static"))
+        .with_state(AppState {
+            engine: Engine::from(tera),
+        });
+
+    Server::bind(&SocketAddr::from_str("0.0.0.0:8000").unwrap())
+        .serve(app.into_make_service())
+        .await
+        .context("failed to serve app")
 }

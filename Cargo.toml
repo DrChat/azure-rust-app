@@ -1,11 +1,17 @@
 [package]
-name = "rocket-app"
+name = "axum-app"
 version = "0.0.0"
 edition = "2021"
 publish = false
 
 [dependencies]
+anyhow = "1.0.71"
+axum = { version = "0.6.18", features = ["tower-log", "form", "macros"] }
+axum-template = { version = "0.19.0", features = ["tera"] }
 azure_core = "0.11.0"
 azure_identity = "0.11.0"
-rocket = { version = "0.5.0-rc.2", features = ["tls"] }
-rocket_dyn_templates = { version = "0.1.0-rc.2", features = ["tera"] }
+serde = { version = "1.0.164", features = ["derive"] }
+serde_json = "1.0.99"
+tera = "1.19.0"
+tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
+tower-http = { version = "0.4.1", features = ["fs"] }
