@@ -8,7 +8,7 @@ use axum::{
 };
 use axum_template::{engine::Engine, RenderHtml};
 use tera::Tera;
-use tower_http::services::ServeDir;
+use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use anyhow::Context;
 use azure_core::auth::TokenCredential;
@@ -58,17 +58,25 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
+
     let tera = Tera::new("templates/**/*").context("failed to initialize tera")?;
 
     let app = Router::new()
         .route("/", get(index))
         .route("/hello", post(hello))
         .nest_service("/static", ServeDir::new("./static"))
+        .layer(TraceLayer::new_for_http())
         .with_state(AppState {
             engine: Engine::from(tera),
         });
 
-    Server::bind(&SocketAddr::from_str("0.0.0.0:8000").unwrap())
+    let addr = SocketAddr::from_str("0.0.0.0:8000").unwrap();
+    tracing::info!("listening on {addr}");
+
+    Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .context("failed to serve app")

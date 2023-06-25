@@ -9,4 +9,4 @@ echo "$(date) Container started" >> /home/LogFiles/dotnet_$WEBSITE_ROLE_INSTANCE
 [ $# -ne 0 ] && exec "$@"
 
 echo "Starting default app..."
-/app/axum-app
+/app/axum-app >> /home/LogFiles/dotnet_$WEBSITE_ROLE_INSTANCE_ID_out.log
