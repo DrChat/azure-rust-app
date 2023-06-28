@@ -30,6 +30,10 @@ COPY templates /app/templates
 COPY init_container.sh /bin/
 # COPY sshd_config /etc/ssh/
 
+# Set up CA certificates so we can make outbound requests in the application.
+RUN apt-get update && apt-get install -y ca-certificates
+RUN update-ca-certificates
+
 RUN chmod 755 /bin/init_container.sh
 
 #WORKDIR /home/site/wwwroot
