@@ -1,80 +1,71 @@
-use std::{net::SocketAddr, str::FromStr};
+#![feature(io_error_other)]
+use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
-use axum::{
-    extract::FromRef,
-    response::IntoResponse,
-    routing::{get, post},
-    Form, Router, Server,
-};
-use axum_template::{engine::Engine, RenderHtml};
-use tera::Tera;
-use tower_http::{services::ServeDir, trace::TraceLayer};
+use axum::{extract::FromRef, http::StatusCode, response::IntoResponse, Router, Server};
+use tower_http::trace::TraceLayer;
 
 use anyhow::Context;
 use azure_core::auth::TokenCredential;
-use azure_identity::ImdsManagedIdentityCredential;
-use serde::Deserialize;
+use azure_identity::{AutoRefreshingTokenCredential, DefaultAzureCredential};
 
-type AppEngine = Engine<Tera>;
+use thiserror::Error;
+use tracing::{info, warn};
 
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
-struct Submit {
-    name: String,
+mod hooks;
+
+#[derive(Error)]
+#[error(transparent)]
+struct Error(#[from] anyhow::Error);
+
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redirect to anyhow::Error implementation
+        self.0.fmt(f)
+    }
 }
 
-async fn hello(engine: AppEngine, Form(form): Form<Submit>) -> impl IntoResponse {
-    RenderHtml(
-        "hello.html.tera",
-        engine,
-        serde_json::json!({
-            "name": form.name,
-        }),
-    )
-}
-
-async fn index(engine: AppEngine) -> impl IntoResponse {
-    let creds = ImdsManagedIdentityCredential::default();
-    let resp = creds.get_token("https://management.azure.com").await;
-
-    let ident = match resp {
-        Ok(_t) => format!("authenticated"),
-        Err(e) => format!("unable to authenticate: {e:#}"),
-    };
-
-    RenderHtml(
-        "index.html.tera",
-        engine,
-        serde_json::json!({
-            "ident": ident
-        }),
-    )
+impl IntoResponse for Error {
+    fn into_response(self) -> axum::response::Response {
+        tracing::error!("{:?}", self.0);
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("{:?}", self.0)).into_response()
+    }
 }
 
 #[derive(Clone, FromRef)]
 struct AppState {
-    engine: AppEngine,
+    creds: Arc<dyn TokenCredential>,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_max_level(tracing::Level::INFO)
+        .with_ansi(false) // Clean up log lines in Azure interface
         .init();
 
-    let tera = Tera::new("templates/**/*").context("failed to initialize tera")?;
+    // Meh. Kind of jank. Waiting for https://github.com/Azure/azure-sdk-for-rust/issues/1228
+    //
+    // Need to wrap the credential provider with an automatic refresh doodad so we don't
+    // constantly request new credentials for every API request.
+    let cred = Arc::new(AutoRefreshingTokenCredential::new(Arc::new(
+        DefaultAzureCredential::default(),
+    )));
+    match cred.get_token("https://management.azure.com").await {
+        Ok(_) => {}
+        // This is not fatal because the managed identity service takes some
+        // time to start up after app startup, so we must tolerate errors here.
+        Err(e) => warn!("failed to authenticate: {e:?}"),
+    }
 
     let app = Router::new()
-        .route("/", get(index))
-        .route("/hello", post(hello))
-        .nest_service("/static", ServeDir::new("./static"))
+        .nest("/hooks", hooks::routes())
         .layer(TraceLayer::new_for_http())
         .with_state(AppState {
-            engine: Engine::from(tera),
+            creds: cred.clone(),
         });
 
     let addr = SocketAddr::from_str("0.0.0.0:8000").unwrap();
-    tracing::info!("listening on {addr}");
+    info!("listening on {addr}");
 
     Server::bind(&addr)
         .serve(app.into_make_service())
