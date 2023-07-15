@@ -1,5 +1,5 @@
-# Rocket ❤️ Azure
-This is a basic example of using a [Rocket](https://rocket.rs/) app with [Azure app services](https://learn.microsoft.com/en-us/azure/app-service/overview).
+# Axum ❤️ Azure
+This is a basic example of using a [Axum](https://github.com/tokio-rs/axum) app with [Azure app services](https://learn.microsoft.com/en-us/azure/app-service/overview).
 
 ## Quick Start
 ```
