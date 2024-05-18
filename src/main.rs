@@ -75,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
 
     let addr = SocketAddr::from_str("0.0.0.0:8000").unwrap();
     tracing::info!("listening on {addr}");
+    tracing::info!("connect to: http://127.0.0.1:{}", addr.port());
 
     Server::bind(&addr)
         .serve(app.into_make_service())
