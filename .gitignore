@@ -1,1 +1,11 @@
-/target
+/*
+!/src
+!/static
+!/templates
+!/.gitattributes
+!/.gitignore
+!/Cargo.lock
+!/Cargo.toml
+!/deployment.bicep
+!/Dockerfile
+!/README.md

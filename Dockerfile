@@ -27,13 +27,13 @@ COPY --from=builder /app /app
 COPY static /app/static
 COPY templates /app/templates
 
-COPY init_container.sh /bin/
+# COPY init_container.sh /bin/
 # COPY sshd_config /etc/ssh/
 
-RUN chmod 755 /bin/init_container.sh
+# RUN chmod 755 /bin/init_container.sh
 
 #WORKDIR /home/site/wwwroot
 WORKDIR /app
 EXPOSE 8000
 
-ENTRYPOINT [ "/bin/init_container.sh" ]
+ENTRYPOINT [ "/app/axum-app" ]

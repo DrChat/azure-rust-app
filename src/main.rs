@@ -4,15 +4,14 @@ use axum::{
     extract::FromRef,
     response::IntoResponse,
     routing::{get, post},
-    Form, Router, Server,
+    Form, Router,
 };
 use axum_template::{engine::Engine, RenderHtml};
 use tera::Tera;
+use tokio::net::TcpListener;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use anyhow::Context;
-use azure_core::auth::TokenCredential;
-use azure_identity::ImdsManagedIdentityCredential;
 use serde::Deserialize;
 
 type AppEngine = Engine<Tera>;
@@ -34,12 +33,15 @@ async fn hello(engine: AppEngine, Form(form): Form<Submit>) -> impl IntoResponse
 }
 
 async fn index(engine: AppEngine) -> impl IntoResponse {
-    let creds = ImdsManagedIdentityCredential::default();
-    let resp = creds.get_token("https://management.azure.com").await;
+    let creds = azure_identity::create_credential().unwrap();
+    let resp = creds.get_token(&["https://management.azure.com"]).await;
 
     let ident = match resp {
         Ok(_t) => format!("authenticated"),
-        Err(e) => format!("unable to authenticate: {e:#}"),
+        Err(e) => {
+            tracing::error!("unable to authenticate: {:?}", e);
+            format!("unable to authenticate")
+        }
     };
 
     RenderHtml(
@@ -74,11 +76,14 @@ async fn main() -> anyhow::Result<()> {
         });
 
     let addr = SocketAddr::from_str("0.0.0.0:8000").unwrap();
+    let listener = TcpListener::bind(&addr)
+        .await
+        .context("failed to bind address")?;
+
     tracing::info!("listening on {addr}");
     tracing::info!("connect to: http://127.0.0.1:{}", addr.port());
 
-    Server::bind(&addr)
-        .serve(app.into_make_service())
+    axum::serve(listener, app.into_make_service())
         .await
         .context("failed to serve app")
 }
