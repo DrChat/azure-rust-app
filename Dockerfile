@@ -1,4 +1,4 @@
-FROM rust:latest as builder
+FROM rust:bookworm as builder
 
 # RUN apt-key update && apt-get update \
 #   && apt-get install build-essential openssl libssl-dev vim -y --force-yes \
@@ -21,16 +21,14 @@ WORKDIR /build
 RUN cargo +nightly build --release
 RUN mkdir -p /app && mv target/release/axum-app /app/
 
-FROM debian:bullseye-slim
+FROM debian:bookworm
 
 COPY --from=builder /app /app
 COPY static /app/static
 COPY templates /app/templates
 
-# COPY init_container.sh /bin/
-# COPY sshd_config /etc/ssh/
-
-# RUN chmod 755 /bin/init_container.sh
+RUN apt-get update \
+ && apt-get install -y libssl-dev
 
 #WORKDIR /home/site/wwwroot
 WORKDIR /app

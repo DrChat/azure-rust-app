@@ -6,14 +6,12 @@ This is a basic example of using a [Axum](https://github.com/tokio-rs/axum) app 
 cargo run
 ```
 
-## Quick Deployment
+## Quick Deployment (Azure CLI)
 ```
-New-AzResourceGroup -Name "webapp" -Location "South Central US"
-New-AzResourceGroupDeployment -ResourceGroupName "webapp" -TemplateFile .\deployment.bicep -TemplateParameterObject @{ `
-  webAppName = "testapp"
-}
+az group create --name "webapp" --location southcentralus
+az deployment group create --resource-group "webapp" --template-file .\deployment.bicep --parameters webAppName=testapp
 
-Connect-AzContainerRegistry -Name <insert name of ACR resource here>
+az acr login --name <insert name of ACR resource here>
 docker build -t <ACR>.azurecr.io/testapp:latest .
 docker push <ACR>.azurecr.io/testapp:latest
 ```
