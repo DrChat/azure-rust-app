@@ -5,15 +5,15 @@ edition = "2021"
 publish = false
 
 [dependencies]
-anyhow = "1.0.71"
+anyhow = "1.0.86"
 axum = { version = "0.7.5", features = ["tower-log", "form", "macros"] }
 axum-template = { version = "2.3.0", features = ["tera"] }
 azure_core = "0.20.0"
 azure_identity = "0.20.0"
-serde = { version = "1.0.164", features = ["derive"] }
-serde_json = "1.0.99"
-tera = "1.19.0"
-tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = "1.0.120"
+tera = "1.20.0"
+tokio = { version = "1.39.1", features = ["macros", "rt-multi-thread"] }
 tower-http = { version = "0.5.2", features = ["fs", "trace"] }
-tracing = "0.1.37"
-tracing-subscriber = "0.3.17"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
